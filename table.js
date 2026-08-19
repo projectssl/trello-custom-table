@@ -1603,36 +1603,28 @@ function renderCardCell(
       'td'
     );
 
-
   const link =
     document.createElement(
       'a'
     );
 
-
   link.className =
     'card-button';
-
 
   link.href =
     row.url;
 
-
   link.target =
     '_blank';
-
 
   link.rel =
     'noopener noreferrer';
 
-
   link.textContent =
     row.name;
 
-
   link.title =
     'Open card in new tab';
-
 
   td.appendChild(link);
 
