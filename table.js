@@ -1630,8 +1630,15 @@ function renderCardCell(
     'click',
     function () {
 
-      t.showCard(
-        row.id
+      if (!row.url) {
+        return;
+      }
+
+
+      window.open(
+        row.url,
+        '_blank',
+        'noopener,noreferrer'
       );
 
     }
