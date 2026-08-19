@@ -13,6 +13,20 @@ let sortKey = 'name';
 let sortDirection = 1;
 
 
+/*
+ * Stores selections for every checkbox multi-filter.
+ *
+ * Example:
+ *
+ * multiSelections.list = Set(['Not Started', 'In Progress'])
+ *
+ * A key beginning custom: refers to a Custom Field.
+ */
+const multiSelections = {};
+
+const multiFilterMeta = {};
+
+
 // =====================================================
 // START
 // =====================================================
@@ -50,11 +64,17 @@ async function init() {
     ]);
 
 
-    const board = results[0] || {};
+    const board =
+      results[0] || {};
 
-    cards = results[1] || [];
 
-    lists = results[2] || [];
+    cards =
+      results[1] || [];
+
+
+    lists =
+      results[2] || [];
+
 
     customFields =
       board.customFields || [];
@@ -64,17 +84,15 @@ async function init() {
 
     prepareRows();
 
-    buildListFilter();
-
-    buildLabelFilter();
-
-    buildMemberFilter();
+    buildMainMultiFilters();
 
     buildCustomFilters();
 
     buildHeaders();
 
     bindEvents();
+
+    bindGlobalMultiFilterEvents();
 
     render();
 
@@ -608,50 +626,43 @@ function startOfDay(date) {
 
 
 // =====================================================
-// FILTER BUILDERS
+// MAIN MULTI FILTERS
 // =====================================================
 
-function buildListFilter() {
+function buildMainMultiFilters() {
 
-  const select =
-    document.getElementById(
-      'listFilter'
-    );
+  buildMultiFilter({
 
+    containerId:
+      'listFilter',
 
-  uniqueSorted(
-    lists.map(
-      function (list) {
+    key:
+      'list',
 
-        return list.name;
+    allLabel:
+      'All Lists',
 
-      }
-    )
-  )
-    .forEach(
-      function (value) {
+    singularLabel:
+      'List',
 
-        addOption(
-          select,
-          value,
-          value
-        );
+    pluralLabel:
+      'Lists',
 
-      }
-    );
+    values:
+      uniqueSorted(
+        lists.map(
+          function (list) {
 
-}
+            return list.name;
 
+          }
+        )
+      )
 
-function buildLabelFilter() {
-
-  const select =
-    document.getElementById(
-      'labelFilter'
-    );
+  });
 
 
-  const values = [];
+  const labels = [];
 
 
   rows.forEach(
@@ -662,7 +673,7 @@ function buildLabelFilter() {
 
           if (label.name) {
 
-            values.push(
+            labels.push(
               label.name
             );
 
@@ -675,31 +686,30 @@ function buildLabelFilter() {
   );
 
 
-  uniqueSorted(values)
-    .forEach(
-      function (value) {
+  buildMultiFilter({
 
-        addOption(
-          select,
-          value,
-          value
-        );
+    containerId:
+      'labelFilter',
 
-      }
-    );
+    key:
+      'label',
 
-}
+    allLabel:
+      'All Labels',
+
+    singularLabel:
+      'Label',
+
+    pluralLabel:
+      'Labels',
+
+    values:
+      uniqueSorted(labels)
+
+  });
 
 
-function buildMemberFilter() {
-
-  const select =
-    document.getElementById(
-      'memberFilter'
-    );
-
-
-  const values = [];
+  const members = [];
 
 
   rows.forEach(
@@ -708,9 +718,13 @@ function buildMemberFilter() {
       row.members.forEach(
         function (member) {
 
-          values.push(
-            member.fullName
-          );
+          if (member.fullName) {
+
+            members.push(
+              member.fullName
+            );
+
+          }
 
         }
       );
@@ -719,25 +733,531 @@ function buildMemberFilter() {
   );
 
 
-  uniqueSorted(values)
-    .forEach(
-      function (value) {
+  buildMultiFilter({
 
-        addOption(
-          select,
-          value,
-          value
-        );
+    containerId:
+      'memberFilter',
 
-      }
-    );
+    key:
+      'member',
+
+    allLabel:
+      'All Members',
+
+    singularLabel:
+      'Member',
+
+    pluralLabel:
+      'Members',
+
+    values:
+      uniqueSorted(members)
+
+  });
+
+
+  buildMultiFilter({
+
+    containerId:
+      'statusFilter',
+
+    key:
+      'status',
+
+    allLabel:
+      'All Schedule Statuses',
+
+    singularLabel:
+      'Status',
+
+    pluralLabel:
+      'Statuses',
+
+    values: [
+      'At Risk',
+      'On Track',
+      'Due on Baseline',
+      'No Baseline',
+      'No Due Date'
+    ]
+
+  });
 
 }
 
 
-// Custom Fields remain filterable automatically.
-// We exclude Responsible here because it receives its
-// own useful filter via the same mechanism anyway.
+// =====================================================
+// MULTI FILTER COMPONENT
+// =====================================================
+
+function buildMultiFilter(config) {
+
+  const container =
+    typeof config.containerId ===
+    'string'
+      ? document.getElementById(
+          config.containerId
+        )
+      : config.containerId;
+
+
+  if (!container) {
+
+    return;
+
+  }
+
+
+  const key =
+    config.key;
+
+
+  multiSelections[key] =
+    new Set();
+
+
+  multiFilterMeta[key] = {
+
+    allLabel:
+      config.allLabel,
+
+    singularLabel:
+      config.singularLabel,
+
+    pluralLabel:
+      config.pluralLabel,
+
+    values:
+      config.values
+
+  };
+
+
+  const wrapper =
+    document.createElement(
+      'div'
+    );
+
+
+  wrapper.className =
+    'multi-filter';
+
+
+  wrapper.dataset.key =
+    key;
+
+
+  const button =
+    document.createElement(
+      'button'
+    );
+
+
+  button.type =
+    'button';
+
+
+  button.className =
+    'multi-filter-button';
+
+
+  const buttonText =
+    document.createElement(
+      'span'
+    );
+
+
+  buttonText.className =
+    'multi-filter-button-text';
+
+
+  buttonText.textContent =
+    config.allLabel;
+
+
+  const arrow =
+    document.createElement(
+      'span'
+    );
+
+
+  arrow.className =
+    'multi-filter-arrow';
+
+
+  arrow.textContent =
+    '▼';
+
+
+  button.appendChild(
+    buttonText
+  );
+
+
+  button.appendChild(
+    arrow
+  );
+
+
+  const menu =
+    document.createElement(
+      'div'
+    );
+
+
+  menu.className =
+    'multi-filter-menu';
+
+
+  const actions =
+    document.createElement(
+      'div'
+    );
+
+
+  actions.className =
+    'multi-filter-actions';
+
+
+  const selectAllButton =
+    document.createElement(
+      'button'
+    );
+
+
+  selectAllButton.type =
+    'button';
+
+
+  selectAllButton.textContent =
+    'Select all';
+
+
+  const clearButton =
+    document.createElement(
+      'button'
+    );
+
+
+  clearButton.type =
+    'button';
+
+
+  clearButton.textContent =
+    'Clear';
+
+
+  actions.appendChild(
+    selectAllButton
+  );
+
+
+  actions.appendChild(
+    clearButton
+  );
+
+
+  const options =
+    document.createElement(
+      'div'
+    );
+
+
+  options.className =
+    'multi-filter-options';
+
+
+  config.values.forEach(
+    function (value) {
+
+      const label =
+        document.createElement(
+          'label'
+        );
+
+
+      label.className =
+        'multi-filter-option';
+
+
+      const checkbox =
+        document.createElement(
+          'input'
+        );
+
+
+      checkbox.type =
+        'checkbox';
+
+
+      checkbox.value =
+        value;
+
+
+      checkbox.dataset.filterKey =
+        key;
+
+
+      const text =
+        document.createElement(
+          'span'
+        );
+
+
+      text.textContent =
+        value;
+
+
+      label.appendChild(
+        checkbox
+      );
+
+
+      label.appendChild(
+        text
+      );
+
+
+      options.appendChild(
+        label
+      );
+
+
+      checkbox.addEventListener(
+        'change',
+        function () {
+
+          if (checkbox.checked) {
+
+            multiSelections[key]
+              .add(value);
+
+          } else {
+
+            multiSelections[key]
+              .delete(value);
+
+          }
+
+
+          refreshMultiFilterButton(
+            key
+          );
+
+
+          render();
+
+        }
+      );
+
+    }
+  );
+
+
+  menu.appendChild(
+    actions
+  );
+
+
+  menu.appendChild(
+    options
+  );
+
+
+  wrapper.appendChild(
+    button
+  );
+
+
+  wrapper.appendChild(
+    menu
+  );
+
+
+  container.appendChild(
+    wrapper
+  );
+
+
+  button.addEventListener(
+    'click',
+    function (event) {
+
+      event.stopPropagation();
+
+
+      const shouldOpen =
+        !wrapper.classList.contains(
+          'open'
+        );
+
+
+      closeAllMultiFilters();
+
+
+      if (shouldOpen) {
+
+        wrapper.classList.add(
+          'open'
+        );
+
+      }
+
+    }
+  );
+
+
+  menu.addEventListener(
+    'click',
+    function (event) {
+
+      event.stopPropagation();
+
+    }
+  );
+
+
+  selectAllButton.addEventListener(
+    'click',
+    function () {
+
+      multiSelections[key] =
+        new Set(
+          config.values
+        );
+
+
+      wrapper
+        .querySelectorAll(
+          'input[type="checkbox"]'
+        )
+        .forEach(
+          function (checkbox) {
+
+            checkbox.checked =
+              true;
+
+          }
+        );
+
+
+      refreshMultiFilterButton(
+        key
+      );
+
+
+      render();
+
+    }
+  );
+
+
+  clearButton.addEventListener(
+    'click',
+    function () {
+
+      clearMultiFilter(
+        key,
+        wrapper
+      );
+
+
+      render();
+
+    }
+  );
+
+}
+
+
+// =====================================================
+// MULTI FILTER DISPLAY
+// =====================================================
+
+function refreshMultiFilterButton(key) {
+
+  const wrapper =
+    document.querySelector(
+      '.multi-filter[data-key="' +
+      cssEscape(key) +
+      '"]'
+    );
+
+
+  if (!wrapper) {
+
+    return;
+
+  }
+
+
+  const button =
+    wrapper.querySelector(
+      '.multi-filter-button'
+    );
+
+
+  const text =
+    wrapper.querySelector(
+      '.multi-filter-button-text'
+    );
+
+
+  const selected =
+    Array.from(
+      multiSelections[key] ||
+      []
+    );
+
+
+  const meta =
+    multiFilterMeta[key];
+
+
+  if (!selected.length) {
+
+    text.textContent =
+      meta.allLabel;
+
+
+    button.classList.remove(
+      'active'
+    );
+
+
+    return;
+
+  }
+
+
+  button.classList.add(
+    'active'
+  );
+
+
+  if (selected.length === 1) {
+
+    text.textContent =
+      selected[0];
+
+
+    return;
+
+  }
+
+
+  text.textContent =
+    selected.length +
+    ' ' +
+    meta.pluralLabel +
+    ' selected';
+
+}
+
+
+// =====================================================
+// CUSTOM FILTERS
+// =====================================================
 
 function buildCustomFilters() {
 
@@ -798,6 +1318,59 @@ function buildCustomFilters() {
       }
 
 
+      /*
+       * Responsible is multi-select.
+       *
+       * Dates and any other Custom Fields remain
+       * standard single-select dropdowns.
+       */
+      if (
+        responsibleField &&
+        field.id ===
+        responsibleField.id
+      ) {
+
+        const holder =
+          document.createElement(
+            'span'
+          );
+
+
+        container.appendChild(
+          holder
+        );
+
+
+        buildMultiFilter({
+
+          containerId:
+            holder,
+
+          key:
+            'custom:' +
+            field.id,
+
+          allLabel:
+            'All ' +
+            field.name,
+
+          singularLabel:
+            field.name,
+
+          pluralLabel:
+            field.name,
+
+          values:
+            uniqueSorted(values)
+
+        });
+
+
+        return;
+
+      }
+
+
       const select =
         document.createElement(
           'select'
@@ -819,7 +1392,8 @@ function buildCustomFilters() {
       addOption(
         select,
         '',
-        'All ' + field.name
+        'All ' +
+        field.name
       );
 
 
@@ -952,7 +1526,8 @@ function buildHeaders() {
       columns.push({
 
         key:
-          'custom:' + field.id,
+          'custom:' +
+          field.id,
 
         label:
           field.name
@@ -965,12 +1540,18 @@ function buildHeaders() {
 
   columns.push(
     {
-      key: 'varianceDays',
-      label: 'Variance'
+      key:
+        'varianceDays',
+
+      label:
+        'Variance'
     },
     {
-      key: 'scheduleStatus',
-      label: 'Schedule Status'
+      key:
+        'scheduleStatus',
+
+      label:
+        'Schedule Status'
     }
   );
 
@@ -1029,9 +1610,12 @@ function changeSort(key) {
 
   } else {
 
-    sortKey = key;
+    sortKey =
+      key;
 
-    sortDirection = 1;
+
+    sortDirection =
+      1;
 
   }
 
@@ -1094,38 +1678,6 @@ function getVisibleRows() {
     );
 
 
-  const selectedList =
-    document
-      .getElementById(
-        'listFilter'
-      )
-      .value;
-
-
-  const selectedLabel =
-    document
-      .getElementById(
-        'labelFilter'
-      )
-      .value;
-
-
-  const selectedMember =
-    document
-      .getElementById(
-        'memberFilter'
-      )
-      .value;
-
-
-  const selectedStatus =
-    document
-      .getElementById(
-        'statusFilter'
-      )
-      .value;
-
-
   const customFilters =
     document.querySelectorAll(
       '.custom-filter'
@@ -1136,10 +1688,14 @@ function getVisibleRows() {
     rows.filter(
       function (row) {
 
+        /*
+         * LIST
+         */
 
         if (
-          selectedList &&
-          row.list !== selectedList
+          hasSelections('list') &&
+          !multiSelections.list
+            .has(row.list)
         ) {
 
           return false;
@@ -1147,54 +1703,141 @@ function getVisibleRows() {
         }
 
 
+        /*
+         * LABELS
+         */
+
         if (
-          selectedLabel &&
-          !row.labels.some(
-            function (label) {
+          hasSelections('label')
+        ) {
 
-              return (
-                label.name ===
-                selectedLabel
-              );
+          const matched =
+            row.labels.some(
+              function (label) {
 
-            }
+                return (
+                  multiSelections.label
+                    .has(
+                      label.name
+                    )
+                );
+
+              }
+            );
+
+
+          if (!matched) {
+
+            return false;
+
+          }
+
+        }
+
+
+        /*
+         * MEMBERS
+         */
+
+        if (
+          hasSelections('member')
+        ) {
+
+          const matched =
+            row.members.some(
+              function (member) {
+
+                return (
+                  multiSelections.member
+                    .has(
+                      member.fullName
+                    )
+                );
+
+              }
+            );
+
+
+          if (!matched) {
+
+            return false;
+
+          }
+
+        }
+
+
+        /*
+         * SCHEDULE STATUS
+         */
+
+        if (
+          hasSelections('status') &&
+          !multiSelections.status
+            .has(
+              row.scheduleStatus
+            )
+        ) {
+
+          return false;
+
+        }
+
+
+        /*
+         * MULTI-SELECT CUSTOM FIELDS
+         * e.g. Responsible
+         */
+
+        const customMultiKeys =
+          Object.keys(
+            multiSelections
           )
+            .filter(
+              function (key) {
+
+                return (
+                  key.startsWith(
+                    'custom:'
+                  ) &&
+                  hasSelections(key)
+                );
+
+              }
+            );
+
+
+        for (
+          const key
+          of customMultiKeys
         ) {
 
-          return false;
+          const fieldId =
+            key.substring(7);
+
+
+          const rowValue =
+            String(
+              row.custom[fieldId] ??
+              ''
+            );
+
+
+          if (
+            !multiSelections[key]
+              .has(rowValue)
+          ) {
+
+            return false;
+
+          }
 
         }
 
 
-        if (
-          selectedMember &&
-          !row.members.some(
-            function (member) {
-
-              return (
-                member.fullName ===
-                selectedMember
-              );
-
-            }
-          )
-        ) {
-
-          return false;
-
-        }
-
-
-        if (
-          selectedStatus &&
-          row.scheduleStatus !==
-          selectedStatus
-        ) {
-
-          return false;
-
-        }
-
+        /*
+         * SEARCH
+         */
 
         if (search) {
 
@@ -1247,6 +1890,11 @@ function getVisibleRows() {
         }
 
 
+        /*
+         * SINGLE SELECT CUSTOM FILTERS
+         * e.g. Baseline Start / Baseline Finish
+         */
+
         for (
           const filter
           of customFilters
@@ -1268,7 +1916,8 @@ function getVisibleRows() {
 
 
           let rowValue =
-            row.custom[fieldId] ?? '';
+            row.custom[fieldId] ??
+            '';
 
 
           if (
@@ -1277,7 +1926,9 @@ function getVisibleRows() {
           ) {
 
             rowValue =
-              formatDate(rowValue);
+              formatDate(
+                rowValue
+              );
 
           }
 
@@ -1310,6 +1961,16 @@ function getVisibleRows() {
 }
 
 
+function hasSelections(key) {
+
+  return Boolean(
+    multiSelections[key] &&
+    multiSelections[key].size
+  );
+
+}
+
+
 // =====================================================
 // SORT VALUES
 // =====================================================
@@ -1336,22 +1997,31 @@ function compareRows(a, b) {
   ) {
 
     return (
-      valueA - valueB
-    ) * sortDirection;
+      valueA -
+      valueB
+    ) *
+    sortDirection;
 
   }
 
 
-  return String(valueA ?? '')
+  return String(
+    valueA ??
+    ''
+  )
     .localeCompare(
-      String(valueB ?? ''),
+      String(
+        valueB ??
+        ''
+      ),
       undefined,
       {
         numeric: true,
         sensitivity: 'base'
       }
     )
-    * sortDirection;
+    *
+    sortDirection;
 
 }
 
@@ -1370,14 +2040,16 @@ function getSortValue(
     return (
       row.custom[
         key.substring(7)
-      ] ?? ''
+      ] ??
+      ''
     );
 
   }
 
 
   if (
-    key === 'labels'
+    key ===
+    'labels'
   ) {
 
     return row.labels
@@ -1394,7 +2066,8 @@ function getSortValue(
 
 
   if (
-    key === 'members'
+    key ===
+    'members'
   ) {
 
     return row.members
@@ -1411,7 +2084,8 @@ function getSortValue(
 
 
   if (
-    key === 'varianceDays'
+    key ===
+    'varianceDays'
   ) {
 
     return (
@@ -1423,7 +2097,8 @@ function getSortValue(
 
 
   return (
-    row[key] ?? ''
+    row[key] ??
+    ''
   );
 
 }
@@ -1445,7 +2120,8 @@ function render() {
     );
 
 
-  tbody.innerHTML = '';
+  tbody.innerHTML =
+    '';
 
 
   if (!visible.length) {
@@ -1538,11 +2214,14 @@ function render() {
 
 
           if (
-            field.type === 'date'
+            field.type ===
+            'date'
           ) {
 
             value =
-              formatDate(value);
+              formatDate(
+                value
+              );
 
           }
 
@@ -1568,7 +2247,9 @@ function render() {
       );
 
 
-      tbody.appendChild(tr);
+      tbody.appendChild(
+        tr
+      );
 
     }
   );
@@ -1603,32 +2284,45 @@ function renderCardCell(
       'td'
     );
 
+
   const link =
     document.createElement(
       'a'
     );
 
+
   link.className =
     'card-button';
+
 
   link.href =
     row.url;
 
+
   link.target =
     '_blank';
+
 
   link.rel =
     'noopener noreferrer';
 
+
   link.textContent =
     row.name;
+
 
   link.title =
     'Open card in new tab';
 
-  td.appendChild(link);
 
-  rowElement.appendChild(td);
+  td.appendChild(
+    link
+  );
+
+
+  rowElement.appendChild(
+    td
+  );
 
 }
 
@@ -1689,9 +2383,14 @@ function renderLabelsCell(
   );
 
 
-  td.appendChild(wrapper);
+  td.appendChild(
+    wrapper
+  );
 
-  rowElement.appendChild(td);
+
+  rowElement.appendChild(
+    td
+  );
 
 }
 
@@ -1756,7 +2455,7 @@ function applyLabelColor(
   };
 
 
-  let key =
+  const key =
     String(color || '')
       .replace(
         /_(light|dark)$/,
@@ -1770,16 +2469,20 @@ function applyLabelColor(
 
   if (selected) {
 
-    element.style.backgroundColor =
-      selected[0];
+    element.style
+      .backgroundColor =
+        selected[0];
+
 
     element.style.color =
       selected[1];
 
   } else {
 
-    element.style.backgroundColor =
-      '#dfe1e6';
+    element.style
+      .backgroundColor =
+        '#dfe1e6';
+
 
     element.style.color =
       '#172b4d';
@@ -1882,9 +2585,14 @@ function renderMembersCell(
   );
 
 
-  td.appendChild(stack);
+  td.appendChild(
+    stack
+  );
 
-  rowElement.appendChild(td);
+
+  rowElement.appendChild(
+    td
+  );
 
 }
 
@@ -1940,7 +2648,10 @@ function renderDueDateCell(
 
   if (!row.due) {
 
-    rowElement.appendChild(td);
+    rowElement.appendChild(
+      td
+    );
+
 
     return;
 
@@ -1959,7 +2670,9 @@ function renderDueDateCell(
     );
 
 
-  td.appendChild(date);
+  td.appendChild(
+    date
+  );
 
 
   if (!row.dueComplete) {
@@ -1987,14 +2700,18 @@ function renderDueDateCell(
         dueStatus.text;
 
 
-      td.appendChild(note);
+      td.appendChild(
+        note
+      );
 
     }
 
   }
 
 
-  rowElement.appendChild(td);
+  rowElement.appendChild(
+    td
+  );
 
 }
 
@@ -2067,12 +2784,18 @@ function renderVarianceCell(
 
 
   if (
-    row.varianceDays === null
+    row.varianceDays ===
+    null
   ) {
 
-    td.textContent = '—';
+    td.textContent =
+      '—';
 
-    rowElement.appendChild(td);
+
+    rowElement.appendChild(
+      td
+    );
+
 
     return;
 
@@ -2120,7 +2843,9 @@ function renderVarianceCell(
   }
 
 
-  rowElement.appendChild(td);
+  rowElement.appendChild(
+    td
+  );
 
 }
 
@@ -2175,7 +2900,9 @@ function renderStatusCell(
   }
 
 
-  rowElement.appendChild(td);
+  rowElement.appendChild(
+    td
+  );
 
 }
 
@@ -2196,10 +2923,13 @@ function addTextCell(
 
 
   td.textContent =
-    value ?? '';
+    value ??
+    '';
 
 
-  row.appendChild(td);
+  row.appendChild(
+    td
+  );
 
 }
 
@@ -2240,6 +2970,30 @@ function formatDate(value) {
 }
 
 
+function cssEscape(value) {
+
+  if (
+    window.CSS &&
+    typeof window.CSS.escape ===
+    'function'
+  ) {
+
+    return window.CSS.escape(
+      value
+    );
+
+  }
+
+
+  return String(value)
+    .replace(
+      /["\\]/g,
+      '\\$&'
+    );
+
+}
+
+
 // =====================================================
 // EVENTS
 // =====================================================
@@ -2253,26 +3007,6 @@ function bindEvents() {
     .addEventListener(
       'input',
       render
-    );
-
-
-  [
-    'listFilter',
-    'labelFilter',
-    'memberFilter',
-    'statusFilter'
-  ]
-    .forEach(
-      function (id) {
-
-        document
-          .getElementById(id)
-          .addEventListener(
-            'change',
-            render
-          );
-
-      }
     );
 
 
@@ -2304,6 +3038,86 @@ function bindEvents() {
 }
 
 
+function bindGlobalMultiFilterEvents() {
+
+  document.addEventListener(
+    'click',
+    function () {
+
+      closeAllMultiFilters();
+
+    }
+  );
+
+
+  document.addEventListener(
+    'keydown',
+    function (event) {
+
+      if (
+        event.key ===
+        'Escape'
+      ) {
+
+        closeAllMultiFilters();
+
+      }
+
+    }
+  );
+
+}
+
+
+function closeAllMultiFilters() {
+
+  document
+    .querySelectorAll(
+      '.multi-filter.open'
+    )
+    .forEach(
+      function (filter) {
+
+        filter.classList.remove(
+          'open'
+        );
+
+      }
+    );
+
+}
+
+
+function clearMultiFilter(
+  key,
+  wrapper
+) {
+
+  multiSelections[key]
+    .clear();
+
+
+  wrapper
+    .querySelectorAll(
+      'input[type="checkbox"]'
+    )
+    .forEach(
+      function (checkbox) {
+
+        checkbox.checked =
+          false;
+
+      }
+    );
+
+
+  refreshMultiFilterButton(
+    key
+  );
+
+}
+
+
 function clearFilters() {
 
   document
@@ -2313,18 +3127,42 @@ function clearFilters() {
     .value = '';
 
 
-  [
-    'listFilter',
-    'labelFilter',
-    'memberFilter',
-    'statusFilter'
-  ]
+  Object.keys(
+    multiSelections
+  )
     .forEach(
-      function (id) {
+      function (key) {
 
-        document
-          .getElementById(id)
-          .value = '';
+        multiSelections[key]
+          .clear();
+
+      }
+    );
+
+
+  document
+    .querySelectorAll(
+      '.multi-filter input[type="checkbox"]'
+    )
+    .forEach(
+      function (checkbox) {
+
+        checkbox.checked =
+          false;
+
+      }
+    );
+
+
+  Object.keys(
+    multiSelections
+  )
+    .forEach(
+      function (key) {
+
+        refreshMultiFilterButton(
+          key
+        );
 
       }
     );
@@ -2337,11 +3175,14 @@ function clearFilters() {
     .forEach(
       function (select) {
 
-        select.value = '';
+        select.value =
+          '';
 
       }
     );
 
+
+  closeAllMultiFilters();
 
   render();
 
@@ -2383,11 +3224,26 @@ function showError(error) {
 function escapeHtml(value) {
 
   return String(value)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
+    .replaceAll(
+      '&',
+      '&amp;'
+    )
+    .replaceAll(
+      '<',
+      '&lt;'
+    )
+    .replaceAll(
+      '>',
+      '&gt;'
+    )
+    .replaceAll(
+      '"',
+      '&quot;'
+    )
+    .replaceAll(
+      "'",
+      '&#039;'
+    );
 
 }
 
