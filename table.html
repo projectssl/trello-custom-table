@@ -14,7 +14,6 @@
   <script src="https://p.trellocdn.com/power-up.min.js"></script>
 
   <style>
-
     :root {
       --text: #172b4d;
       --subtle-text: #626f86;
@@ -24,15 +23,22 @@
       --hover: #f7f8f9;
       --background: #ffffff;
       --control-background: #ffffff;
+
       --risk-background: #fff1f0;
       --risk-border: #f15b50;
+
       --overdue-background: #ffebe6;
       --overdue-text: #ae2a19;
+
       --soon-background: #fff7d6;
       --soon-text: #7f5f01;
+
       --status-good: #216e4e;
       --status-risk: #ae2a19;
       --status-neutral: #626f86;
+
+      --blue: #0c66e4;
+      --blue-hover: #0055cc;
     }
 
     * {
@@ -48,6 +54,7 @@
     body {
       margin: 0;
       padding: 0;
+
       background: var(--background);
       color: var(--text);
 
@@ -68,11 +75,16 @@
       padding: 16px 20px 20px;
     }
 
+    /* =====================================================
+       TOOLBAR
+       ===================================================== */
+
     .toolbar {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 8px;
+
       margin-bottom: 14px;
     }
 
@@ -80,11 +92,15 @@
     .toolbar select,
     .toolbar button {
       height: 34px;
+
       border: 1px solid var(--border);
       border-radius: 3px;
+
       background: var(--control-background);
       color: var(--text);
+
       font: inherit;
+
       padding: 6px 9px;
     }
 
@@ -112,20 +128,152 @@
       white-space: nowrap;
     }
 
+    /* =====================================================
+       MULTI SELECT FILTER
+       ===================================================== */
+
+    .multi-filter {
+      position: relative;
+      display: inline-block;
+    }
+
+    .multi-filter-button {
+      min-width: 145px;
+      max-width: 210px;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+
+      white-space: nowrap;
+    }
+
+    .multi-filter-button.active {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+
+    .multi-filter-arrow {
+      font-size: 10px;
+      color: var(--subtle-text);
+    }
+
+    .multi-filter-menu {
+      position: absolute;
+      z-index: 50;
+
+      top: calc(100% + 4px);
+      left: 0;
+
+      width: 260px;
+      max-height: 360px;
+
+      display: none;
+
+      overflow: hidden;
+
+      background: #ffffff;
+
+      border: 1px solid var(--border);
+      border-radius: 6px;
+
+      box-shadow:
+        0 8px 12px rgba(9, 30, 66, 0.15),
+        0 0 1px rgba(9, 30, 66, 0.31);
+    }
+
+    .multi-filter.open .multi-filter-menu {
+      display: block;
+    }
+
+    .multi-filter-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+
+      padding: 8px;
+
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .multi-filter-actions button {
+      height: 28px;
+      padding: 3px 8px;
+
+      border: 0;
+
+      color: var(--blue);
+      background: transparent;
+
+      font-size: 12px;
+    }
+
+    .multi-filter-actions button:hover {
+      color: var(--blue-hover);
+      background: var(--header);
+    }
+
+    .multi-filter-options {
+      max-height: 285px;
+      overflow-y: auto;
+
+      padding: 4px 0;
+    }
+
+    .multi-filter-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      min-height: 34px;
+
+      padding: 6px 10px;
+
+      cursor: pointer;
+
+      color: var(--text);
+    }
+
+    .multi-filter-option:hover {
+      background: var(--header);
+    }
+
+    .multi-filter-option input {
+      width: 16px;
+      height: 16px;
+
+      margin: 0;
+      padding: 0;
+    }
+
+    .multi-filter-option span {
+      flex: 1;
+    }
+
+    /* =====================================================
+       TABLE
+       ===================================================== */
+
     .table-wrap {
       width: 100%;
       overflow: auto;
+
       border: 1px solid var(--border);
       border-radius: 3px;
+
       max-height: calc(100vh - 85px);
+
       background: #ffffff;
     }
 
     table {
       border-collapse: separate;
       border-spacing: 0;
+
       width: 100%;
       min-width: 1180px;
+
       table-layout: auto;
     }
 
@@ -146,6 +294,7 @@
       border-bottom: 1px solid var(--border);
 
       white-space: nowrap;
+
       cursor: pointer;
       user-select: none;
     }
@@ -157,9 +306,13 @@
 
     td {
       height: 48px;
+
       padding: 8px 10px;
+
       vertical-align: middle;
+
       border-bottom: 1px solid var(--border-light);
+
       background: #ffffff;
     }
 
@@ -180,44 +333,67 @@
     }
 
     tbody tr.at-risk td:first-child {
-      box-shadow: inset 3px 0 0 var(--risk-border);
+      box-shadow:
+        inset 3px 0 0 var(--risk-border);
     }
 
-.card-button {
-  color: var(--text);
-  font: inherit;
-  font-weight: 500;
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-}
+    /* =====================================================
+       CARD LINKS
+       ===================================================== */
 
-.card-button:hover {
-  text-decoration: underline;
-}
+    .card-button {
+      color: var(--text);
+
+      font: inherit;
+      font-weight: 500;
+
+      text-align: left;
+      text-decoration: none;
+
+      cursor: pointer;
+    }
+
+    .card-button:hover {
+      text-decoration: underline;
+    }
+
+    /* =====================================================
+       LABELS
+       ===================================================== */
 
     .label-wrap {
       display: flex;
       flex-wrap: wrap;
       gap: 4px;
+
       align-items: center;
     }
 
     .trello-label {
       display: inline-flex;
       align-items: center;
+
       min-height: 22px;
+
       padding: 2px 7px;
+
       border-radius: 3px;
+
       font-size: 12px;
       font-weight: 500;
       line-height: 18px;
+
       white-space: nowrap;
     }
+
+    /* =====================================================
+       MEMBERS
+       ===================================================== */
 
     .member-stack {
       display: flex;
       align-items: center;
+
       min-width: 60px;
     }
 
@@ -225,10 +401,15 @@
     .member-initials {
       width: 28px;
       height: 28px;
+
       border-radius: 50%;
+
       margin-left: -5px;
+
       border: 2px solid #ffffff;
+
       object-fit: cover;
+
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -241,9 +422,14 @@
     .member-initials {
       background: #dfe1e6;
       color: #172b4d;
+
       font-size: 10px;
       font-weight: 700;
     }
+
+    /* =====================================================
+       DATES
+       ===================================================== */
 
     .date-cell {
       white-space: nowrap;
@@ -251,9 +437,12 @@
 
     .date-note {
       display: inline-block;
+
       margin-left: 5px;
       padding: 1px 5px;
+
       border-radius: 3px;
+
       font-size: 11px;
       font-weight: 600;
     }
@@ -267,6 +456,10 @@
       background: var(--soon-background);
       color: var(--soon-text);
     }
+
+    /* =====================================================
+       STATUS / VARIANCE
+       ===================================================== */
 
     .status {
       font-weight: 600;
@@ -295,18 +488,23 @@
       font-weight: 600;
     }
 
+    /* =====================================================
+       STATES
+       ===================================================== */
+
     .empty-state,
     .loading,
     .error {
       padding: 30px;
+
       text-align: center;
+
       color: var(--subtle-text);
     }
 
     .error {
       color: var(--status-risk);
     }
-
   </style>
 
 </head>
@@ -327,30 +525,20 @@
         placeholder="Search cards..."
       >
 
-      <select id="listFilter">
-        <option value="">All Lists</option>
-      </select>
+      <div id="listFilter"></div>
 
-      <select id="labelFilter">
-        <option value="">All Labels</option>
-      </select>
+      <div id="labelFilter"></div>
 
-      <select id="memberFilter">
-        <option value="">All Members</option>
-      </select>
+      <div id="memberFilter"></div>
 
-      <select id="statusFilter">
-        <option value="">All Schedule Statuses</option>
-        <option value="At Risk">At Risk</option>
-        <option value="On Track">On Track</option>
-        <option value="Due on Baseline">Due on Baseline</option>
-        <option value="No Baseline">No Baseline</option>
-        <option value="No Due Date">No Due Date</option>
-      </select>
+      <div id="statusFilter"></div>
 
       <span id="customFilters"></span>
 
-      <button id="clearButton">
+      <button
+        id="clearButton"
+        type="button"
+      >
         Clear Filters
       </button>
 
