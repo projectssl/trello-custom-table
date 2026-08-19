@@ -1604,48 +1604,37 @@ function renderCardCell(
     );
 
 
-  const button =
+  const link =
     document.createElement(
-      'button'
+      'a'
     );
 
 
-  button.type =
-    'button';
-
-
-  button.className =
+  link.className =
     'card-button';
 
 
-  button.textContent =
+  link.href =
+    row.url;
+
+
+  link.target =
+    '_blank';
+
+
+  link.rel =
+    'noopener noreferrer';
+
+
+  link.textContent =
     row.name;
 
 
-  button.title =
-    'Open card';
+  link.title =
+    'Open card in new tab';
 
 
-  button.addEventListener(
-    'click',
-    function () {
-
-      if (!row.url) {
-        return;
-      }
-
-
-      window.open(
-        row.url,
-        '_blank',
-        'noopener,noreferrer'
-      );
-
-    }
-  );
-
-
-  td.appendChild(button);
+  td.appendChild(link);
 
   rowElement.appendChild(td);
 
